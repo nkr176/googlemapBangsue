@@ -1,0 +1,168 @@
+<html>
+  <head>
+    <title>Bangsue Location</title>
+    <meta name="viewport" content="initial-scale=1.0">
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="libery/bootstrap-4.3.1-dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="libery/fontawesome-free-5.8.2-web/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <a class="navbar-brand" href="#">Bangsue</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+        
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mr-auto">
+
+        </ul>
+      </div>
+  </nav>
+  <div class="container-fluid">
+      <h1>Bangsue</h1>
+    <div class="row">
+        <!-- แสดงแผนที่ -->
+        <div class="col-md-9">
+          <input type="text" id="pac-input" class="form-control col-md-3" placeholder="Search">
+          <div id="map"></div>
+        </div>
+        <!-- แสดงแผนที่ -->
+        <!-- แสดงรายชื่อร้านอาหาร -->
+        <div class="col-md-3">
+            <div id="right-panel" class="card">
+              <div class="card-body">
+                <h2>Results</h2>
+                <hr>
+                <ul id="places" style=" height: 450px; overflow-y: scroll;"></ul>
+                <button id="more" class="btn btn-secondary">More results</button>
+              </div>
+            </div>
+        </div>
+        <!-- แสดงรายชื่อร้านอาหาร -->
+    </div>
+  </div>
+</body>
+</html>
+<script src="js/jquery-3.4.1.min.js"></script>
+<script src="libery/bootstrap-4.3.1-dist/js/bootstrap.min.js"></script>
+<script>
+var map;
+
+function initMap() {
+    // Create the map.
+    var bangsue  = new google.maps.LatLng(13.8236649, 100.5305843);
+    map = new google.maps.Map(document.getElementById('map'), {
+    center: bangsue,
+    zoom: 17
+  });
+
+  // Create the search box and link it to the UI element.
+  var input = document.getElementById('pac-input');
+  var searchBox = new google.maps.places.SearchBox(input);
+  map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
+
+  // Bias the SearchBox results towards current map's viewport.
+  map.addListener('bounds_changed', function() {
+    searchBox.setBounds(map.getBounds());
+  });
+
+  var markers = [];
+  // Listen for the event fired when the user selects a prediction and retrieve
+  // more details for that place.
+  searchBox.addListener('places_changed', function() {
+    var places = searchBox.getPlaces();
+    if (places.length == 0) {
+      return;
+    }
+
+    // Clear out the old markers.
+    markers.forEach(function(marker) {
+      marker.setMap(null);
+    });
+    markers = [];
+
+    // For each place, get the icon, name and location.
+    var bounds = new google.maps.LatLngBounds();
+    places.forEach(function(place) {
+      if (!place.geometry) {
+        console.log("Returned place contains no geometry");
+        return;
+      }
+      var icon = {
+        url: place.icon,
+        size: new google.maps.Size(71, 71),
+        origin: new google.maps.Point(0, 0),
+        anchor: new google.maps.Point(17, 34),
+        scaledSize: new google.maps.Size(25, 25)
+      };
+
+        // Create a marker for each place.
+        markers.push(new google.maps.Marker({
+          map: map,
+          icon: icon,
+          title: place.name,
+          position: place.geometry.location
+        }));
+        if (place.geometry.viewport) {
+          // Only geocodes have viewport.
+          bounds.union(place.geometry.viewport);
+        } else {
+          bounds.extend(place.geometry.location);
+        }
+      });
+      map.fitBounds(bounds);
+    });
+
+  // Create the places service.
+  var service = new google.maps.places.PlacesService(map);
+  var getNextPage = null;
+  var moreButton = document.getElementById('more');
+      moreButton.onclick = function() {
+      moreButton.disabled = true;
+      if (getNextPage) getNextPage();
+      };
+
+  // Perform a nearby search.
+  service.nearbySearch(
+      {location: bangsue, radius: 500, type: ['restaurant']}, //กำหนดประเภทการค้นหา
+      function(results, status, pagination) {
+        if (status !== 'OK') return;
+
+        createMarkers(results);
+        moreButton.disabled = !pagination.hasNextPage;
+        getNextPage = pagination.hasNextPage && function() {
+          pagination.nextPage();
+        };
+      });
+}
+
+//สร้าง marker บนแผนที่ และ แสดงชื่อร้านอาหารที่ Results
+function createMarkers(places) {
+  var bounds = new google.maps.LatLngBounds();
+
+  for (var i = 0, place; place = places[i]; i++) {
+    var image = {
+      url: place.icon,
+      size: new google.maps.Size(71, 71),
+      origin: new google.maps.Point(0, 0),
+      anchor: new google.maps.Point(17, 34),
+      scaledSize: new google.maps.Size(25, 25)
+    };
+
+    var marker = new google.maps.Marker({
+      map: map,
+      icon: image,
+      title: place.name,
+      position: place.geometry.location
+    });
+
+    $("#places").append('<li>'+place.name+'</li>'); //แสดงชื่อร้านอาหารที่ Results
+
+    bounds.extend(place.geometry.location);
+  }
+  map.fitBounds(bounds);
+}
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCXYZLTzkm-ANLVN4Ly0HqFwS8-nJfwLas&language=th&region=TH&libraries=places&callback=initMap" async defer></script>
